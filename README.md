@@ -77,4 +77,4 @@ You can use the following command to create a ticket in Jira from your command l
   
 ## Result
 * A new ticket should be created in Jira with attached graph.
-* When problem is going to OK, script convert the ticket to "Done" status with comment from zabbix recovery message.  
+* When problem is going to OK, script set the status of the ticket to "Done" and add a recovery message.
