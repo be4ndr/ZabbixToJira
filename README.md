@@ -3,7 +3,7 @@ A simple python script to open tickets in Jira when Zabbix Alarm is triggering a
 and parrsing it to get parameters from Zabbix.
 
 # ZabbixToJira(ZTJ)
-zabbix-jira is python module that allows you to create tasks in Jira with grafs by the trigger from Zabbix.
+zabbix-jira is python module that allows you to create tasks in Jira with grafs by the trigger from Zabbix. It also checks Jira for opening tickets for the specific user and clears the internal DB if the ticket was closed in Jira manually.
 
 ## Requirements: 
 * python >= 2.7
