@@ -1,0 +1,9 @@
+{"ztj": {"graphs": [{"triggerid": "19156"}, {"ok": "1"}]}}
+||Server:|Zabbix Server, zabbix.com, (xxx.xxx.xxx.xxx)||
+||Last value:|4.81 MB (11:10:13)||
+
+{panel:title=Description}
+Problem resolved!
+
+Time of resolved problem: 2019.10.21 11:10:13
+{panel}
