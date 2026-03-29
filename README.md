@@ -1,31 +1,70 @@
-# ZabbixToJira(ZTJ)
-A simple python script to open tickets in Jira when Zabbix Alarm is triggering and add a graph to the ticket. It uses a data in json format
-and parrsing it to get parameters from Zabbix.
+# ZabbixToJira (ZTJ)
 
-# ZabbixToJira(ZTJ)
-zabbix-jira is python module that allows you to create tasks in Jira with grafs by the trigger from Zabbix. It also checks Jira for opening tickets for the specific user and clears the internal DB if the ticket was closed in Jira manually.
+ZabbixToJira is a Python alert script that creates Jira issues from Zabbix problem events, attaches a Zabbix graph image, and closes the related Jira issue when the Zabbix problem is resolved.
 
-## Requirements: 
-* python >= 2.7
-* python libs: requests, jira, json, sqlite
+## What this project does
 
-## Installation:
-1. Copy this repo to your zabbix-server:
-`git clone https://github.com/be4ndr/ZabbixToJira.git` 
-2. Copy `zabbix_to_jira.py` to your Zabbix `AlertScriptsPath` directory (see your zabbix_server.conf) 
-3. Create and configure `ztj_config.py` near `zabbix_to_jira.py`. You can take as an example `ztj_config_default.py` from repo.  
-4. Install python libs: `pip install -r requirements.txt`
+- Creates Jira issues for new Zabbix problems.
+- Maps Zabbix trigger severity to Jira priority.
+- Downloads and attaches a Zabbix graph image to the issue.
+- Tracks trigger-to-issue mapping in a local SQLite database (`zabbix-jira.db`).
+- On recovery events, adds a comment and transitions the issue to your configured "close" transition.
+- Periodically cleans stale mappings from SQLite if issues were closed manually in Jira.
 
-## Configuration:
-* Create new media type in Zabbix:  
+## Requirements
 
-If you use Zabbix 3.0 and higher, add this parameters:
+- Python 3.9+
+- Network access from your Zabbix server to Jira and Zabbix web UI
+
+Python dependencies are in `requirements.txt` and include upgraded versions of:
+
+- `requests`
+- `jira`
+- `urllib3`
+- `certifi`
+
+Install dependencies:
+
+```bash
+python3 -m pip install -r requirements.txt
 ```
-{ALERT.SENDTO}
-{ALERT.SUBJECT}
-```
-Example message:  
-```
+
+## Installation
+
+1. Clone this repository:
+
+   ```bash
+   git clone https://github.com/be4ndr/ZabbixToJira.git
+   cd ZabbixToJira
+   ```
+
+2. Copy `zabbix_to_jira.py` into your Zabbix `AlertScriptsPath` directory (from `zabbix_server.conf`).
+
+3. Create `ztj_config.py` next to `zabbix_to_jira.py` by copying `ztj_config_default.py` and filling real values.
+
+4. Ensure the script can write to:
+   - temp graph directory (`zbx_tmp_dir`, default `/tmp/ztj`)
+   - local SQLite file (`zabbix-jira.db`)
+
+## Configuration
+
+Example `ztj_config.py` keys:
+
+- `jira_server`, `jira_user`, `jira_pass`
+- `jira_project`, `jira_issue_type`
+- `jira_transition` (transition name used to close issues)
+- `jira_verify` (`True` to verify TLS certs)
+- `zbx_server`, `zbx_user`, `zbx_password`
+- `zbx_prefix`
+- `zbx_tmp_dir`
+
+## Zabbix media/action payload format
+
+The script expects JSON metadata in the message body with a `ztj` prefix block.
+
+### Problem event example
+
+```text
 {"ztj": {"graphs": [{"graphs_period": "1800"}, {"itemid": "{ITEM.ID1}"}, {"triggerid": "{TRIGGER.ID}"}, {"title": "{HOST.HOST} - {TRIGGER.NAME}"}, {"priority": "{TRIGGER.SEVERITY}"}]}}
 ||Last value:|{ITEM.VALUE1} ({TIME})||
 ||Server:|{HOST.NAME}, {HOSTNAME}, ({HOST.IP})||
@@ -34,8 +73,10 @@ Example message:
 {TRIGGER.DESCRIPTION}
 {panel}
 ```
-Example recovery message:
-```
+
+### Recovery event example
+
+```text
 {"ztj": {"graphs": [{"triggerid": "{TRIGGER.ID}"}, {"ok": "1"}]}}
 ||Server:|{HOST.NAME}, {HOSTNAME}, ({HOST.IP})||
 ||Last value:|{ITEM.VALUE1} ({TIME})||
@@ -47,34 +88,33 @@ Time of resolved problem: {DATE} {TIME}
 {panel}
 ```
 
-### Annotations
-```
-"graphs" -- a part of json data responsible for graphs
-"graphs_period": "1800" -- set graphs period (default - 3600 seconds)
-graphs_width: "900" -- set graphs width (default - 900px)
-"graphs_height": "200" -- set graphs height (default - 300px)
-"itemid": "{ITEM.ID1}" -- define itemid (from trigger) for attach
-"title": "{HOST.HOST} - {TRIGGER.NAME}" -- graph title
-"triggerid": "{TRIGGER.ID}"-- define triggerid to link problem and recovery of event
-{"priority": "{TRIGGER.SEVERITY}"} -- set priority task like as priority of trigger from Zabbix
-"ok": "1" -- use this parameter only in RECOVERY message, if you don't want create a new task about recovery in Jira
+## Graph options reference
+
+- `graphs_period` (default: `3600` seconds)
+- `graphs_width` (default: `900`)
+- `graphs_height` (default: `200`)
+- `itemid` (Zabbix item ID used for chart)
+- `title` (chart title)
+- `triggerid` (used to correlate problem and recovery)
+- `priority` (Zabbix severity text)
+- `ok` (`1` in recovery messages)
+
+## Local testing
+
+The script currently contains a hardcoded local test input line:
+
+```python
+zbx_body = open("test\\entry.txt", 'r').read()
+# zbx_body = sys.argv[2]
 ```
 
-You can use Jira format text in your actions: [https://jira.atlassian.com/secure/WikiRendererHelpAction.jspa?section=all](https://jira.atlassian.com/secure/WikiRendererHelpAction.jspa?section=all)
+For production usage, switch to `sys.argv[2]` input.
 
-### Test script
-You can use the following command to create a ticket in Jira from your command line:  
-`python jirabix.py "jira_username" "ticket_subject" "ticket_desc"` where
-* jira_username - username from Jira user profile 
-* For `ticket_subject` and `ticket_desc` you may use "test" "test"
-  * If you want to test real text from zabbix action message copy `test/entry.txt` from repo and change the contents of the file on your real data and change `zabbix_to_jira.py`:
-```
-    zbx_body = open("test\\entry.txt", 'r').read()
-    #    zbx_body = sys.argv[2]
-```
-  And run:  
-  `python jirabix.py "jira_username" "ticket_subject`
-  
-## Result
-* A new ticket should be created in Jira with attached graph.
-* When problem is going to OK, script set the status of the ticket to "Done" and add a recovery message.
+## Notes
+
+- Jira text formatting in message body is supported by Jira as plain issue description/comment content.
+- Keep credentials secure; avoid committing real values in `ztj_config.py`.
+
+## License
+
+This project is licensed under the terms in `LICENSE`.
