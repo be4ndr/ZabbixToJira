@@ -2,6 +2,14 @@
 
 ZabbixToJira is a Python alert script that creates Jira issues from Zabbix problem events, attaches a Zabbix graph image, and closes the related Jira issue when the Zabbix problem is resolved.
 
+The current implementation is structured for production use:
+
+- validated runtime configuration
+- typed alert parsing and normalization
+- dedicated Jira and Zabbix service layers
+- isolated SQLite repository for trigger mappings
+- structured logging and explicit error handling
+
 ## What this project does
 
 - Creates Jira issues for new Zabbix problems.
@@ -13,7 +21,7 @@ ZabbixToJira is a Python alert script that creates Jira issues from Zabbix probl
 
 ## Requirements
 
-- Python 3.9+
+- Python 3.12
 - Network access from your Zabbix server to Jira and Zabbix web UI
 
 Python dependencies are in `requirements.txt` and include upgraded versions of:
@@ -26,7 +34,7 @@ Python dependencies are in `requirements.txt` and include upgraded versions of:
 Install dependencies:
 
 ```bash
-python3 -m pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 ## Installation
@@ -43,7 +51,7 @@ python3 -m pip install -r requirements.txt
 3. Create `ztj_config.py` next to `zabbix_to_jira.py` by copying `ztj_config_default.py` and filling real values.
 
 4. Ensure the script can write to:
-   - temp graph directory (`zbx_tmp_dir`, default `/tmp/ztj`)
+   - temp graph directory (`zbx_tmp_dir`, default OS temp dir + `/ztj`)
    - local SQLite file (`zabbix-jira.db`)
 
 ## Configuration
@@ -57,6 +65,7 @@ Example `ztj_config.py` keys:
 - `zbx_server`, `zbx_user`, `zbx_password`
 - `zbx_prefix`
 - `zbx_tmp_dir`
+- `http_timeout_seconds` (optional, default: `30`)
 
 ## Zabbix media/action payload format
 
@@ -99,16 +108,22 @@ Time of resolved problem: {DATE} {TIME}
 - `priority` (Zabbix severity text)
 - `ok` (`1` in recovery messages)
 
-## Local testing
+## Runtime behavior
 
-The script currently contains a hardcoded local test input line:
+- The script reads the alert subject from `sys.argv[1]`.
+- The script reads the Zabbix message body from `sys.argv[2]`.
+- If `ztj_config.py` is missing, the script falls back to `ztj_config_default.py`.
+- Trigger-to-issue mappings are stored in `zabbix-jira.db` in the current working directory.
+- Application logs are written to stderr using Python `logging`.
+- Invalid config, payload, or external-service failures return a non-zero exit code.
 
-```python
-zbx_body = open("test\\entry.txt", 'r').read()
-# zbx_body = sys.argv[2]
+## Tests
+
+Run the automated test suite with:
+
+```bash
+python -m unittest discover -s test
 ```
-
-For production usage, switch to `sys.argv[2]` input.
 
 ## Notes
 

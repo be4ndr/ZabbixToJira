@@ -1,0 +1,14 @@
+[project]
+name = "zabbix-to-jira"
+version = "0.1.0"
+description = "Create and close Jira issues from Zabbix alerts."
+requires-python = ">=3.12"
+dependencies = [
+    "certifi>=2026.2.25",
+    "jira>=3.10.5,<4.0.0",
+    "requests>=2.33.0,<3.0.0",
+    "urllib3>=2.6.0,<3.0.0",
+]
+
+[tool.unittest]
+start-directory = "test"
